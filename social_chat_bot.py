@@ -24,8 +24,8 @@ X = load_data(os.path.join(data_path,'first.txt'))
 Y = load_data(os.path.join(data_path,'second.txt'))
 
 #Split X and Y into train and val
-train_source,val_source,test_source = X[:720000],X[720000:721000],X[721000:]
-train_target,val_target,test_target = X[:720000],Y[720000:721000],Y[721000:]
+train_source,val_source,test_source = X[:192000],X[192000:194000],X[194000:]
+train_target,val_target,test_target = Y[:192000],Y[192000:194000],Y[194000:]
 
 #Create the train, val and test dataset
 train_data = [[x.strip(),y.strip()] for x,y in zip(train_source,train_target)]
@@ -50,7 +50,7 @@ for x in X:
 			vocab.append(w)
 print(len(vocab))
 
-'''
+
 #Construct the source_word2id, source_id2word, target_word2id, target_id2word dictionaries
 s_word2id, s_id2word = construct_vocab_dic(vocab)
 
@@ -71,7 +71,7 @@ test_y_ref = [[d[1].split()] for d in test_data]
 #Train the Network. 
 attn_model = 'general'
 embedding_size = 300
-hidden_size = 256
+hidden_size = 512
 n_layers = 1
 dropout_p = 0.05
 batch_size = 128
@@ -79,7 +79,7 @@ eval_batch_size = 128
 batch_num = math.floor(len(train_data_index)/batch_size)
 learning_rate = 0.0001
 #configuring training parameters
-n_epochs = 1
+n_epochs = 10
 print_every = 10
 eval_every = 5*print_every
 save_every = 2000
@@ -161,4 +161,3 @@ print("Saving Model ...")
 #Save the Model
 torch.save(encoder,os.path.join(trained_model_output_path,"chatbot_encoder.pt"))
 torch.save(decoder,os.path.join(trained_model_output_path,"chatbot_decoder.pt"))
-'''
