@@ -1,27 +1,52 @@
 '''
 A pytorch chatbot
 '''
-
+from nltk import word_tokenize,tokenize
 import os
 from preprocessing import *
 from encoder import *
 from decoder import *
 from train import *
 from bleu import *
+from collections import Counter
+import time
 
 #Load the two dataset
 SOS_token = 2
 EOS_token = 3
 UNK_token = 1
-MAX_LENGTH = 50 #We will abandon any sentence that is longer than this length
+MAX_LENGTH = 30 #We will abandon any sentence that is longer than this length
 
+## Helper Functions to Print Time Elapsed and Estimated Time Remaining, give the current time and progress
+def as_minutes(s):
+    m = math.floor(s/60)
+    s-= m*60
+    return '%dm %ds'%(m,s)
+def time_since(since, percent):
+    now = time.time()
+    s = now - since
+    es = s/(percent)
+    rs = es-s
+    return '%s (- %s)'%(as_minutes(s),as_minutes(rs))
 
 #Load the Dataset
 data_path = './'
 trianed_model_output_path = '/home/zmykevin/alexa_challenge/social_bot/trained_model/chatbot_1'
 
-X = load_data(os.path.join(data_path,'first.txt'))
-Y = load_data(os.path.join(data_path,'second.txt'))
+#X = load_data(os.path.join(data_path,'first.txt'))
+X = []
+with open(os.path.join(data_path,'first.txt'),encoding='windows-1252') as f:
+    for i,line in enumerate(f):
+        X.append(line)
+print(len(X))
+
+Y = []
+with open(os.path.join(data_path,'second.txt'),encoding='windows-1252') as f:
+    for i,line in enumerate(f):
+        Y.append(line)
+print(len(Y))
+
+#Y = load_data(os.path.join(data_path,'second.txt'))
 
 #Split X and Y into train and val
 train_source,val_source,test_source = X[:192000],X[192000:194000],X[194000:]
@@ -41,15 +66,26 @@ print("The size of Val Data after filtering: {}".format(len(val_data)))
 print("The size of Test Data after filtering: {}".format(len(test_data)))
 
 #Load the Vocabulary File and Create Word2Id and Id2Word dictionaries for translation
-#vocab = load_data(os.path.join(data_path,'vocab.en'))
+vocab = load_data(os.path.join(data_path,'vocab.txt'))
+print(len(vocab))
+'''
 #Create a vocab from files
-vocab = []
+vocab_count = Counter()
 for x in X:
-	for w in x.split():
-		if w not in vocab:
-			vocab.append(w)
+    tokenized_x = word_tokenize(x)
+    for w in tokenized_x:
+        vocab_count[w] += 1
+
+vocab = []
+for x in list(vocab_count):
+    if vocab_count[x] > 1:
+        vocab.append(x)
 print(len(vocab))
 
+with open('vocab.txt','w') as f:
+    for word in ['<unk>','<s>','</s>']+list(vocab):
+        f.write(word+'\n')
+'''
 
 #Construct the source_word2id, source_id2word, target_word2id, target_id2word dictionaries
 s_word2id, s_id2word = construct_vocab_dic(vocab)
@@ -70,8 +106,8 @@ test_y_ref = [[d[1].split()] for d in test_data]
 #Construct the Model
 #Train the Network. 
 attn_model = 'general'
-embedding_size = 300
-hidden_size = 512
+embedding_size = 512
+hidden_size = 1024
 n_layers = 1
 dropout_p = 0.05
 batch_size = 128
@@ -80,7 +116,7 @@ batch_num = math.floor(len(train_data_index)/batch_size)
 learning_rate = 0.0001
 #configuring training parameters
 n_epochs = 10
-print_every = 10
+print_every = 200
 eval_every = 5*print_every
 save_every = 2000
 
@@ -108,6 +144,7 @@ encoder_lr_decay_scheduler= optim.lr_scheduler.ReduceLROnPlateau(encoder_optimiz
 decoder_lr_decay_scheduler= optim.lr_scheduler.ReduceLROnPlateau(decoder_optimizer,factor=0.5,patience=5)
 
 #Start Training
+start = time.time()
 print_loss_total = 0 #Reset every print_every
 iter_count = 0
 for epoch in range(1,n_epochs + 1):
@@ -125,7 +162,7 @@ for epoch in range(1,n_epochs + 1):
         if iter_count%print_every == 0:
             print_loss_avg = print_loss_total / print_every
             print_loss_total = 0
-            print_summary = '(%d %d%%) %.4f' % (iter_count, iter_count / n_epochs / batch_num * 100, print_loss_avg)
+            print_summary = '%s (%d %d%%) %.4f' % (time_since(start, iter_count / n_epochs / batch_num), iter_count, iter_count / n_epochs / batch_num * 100, print_loss_avg)
             print(print_summary)
 
         if iter_count%eval_every == 0:
